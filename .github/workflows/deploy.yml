@@ -1,0 +1,46 @@
+
+name: Microservices CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: YOUR_GITHUB_OIDC_ROLE_ARN
+          aws-region: eu-north-1
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push User Service
+        run: |
+          docker build -t user-service ./user-service
+          docker tag user-service:latest 451971655895.dkr.ecr.eu-north-1.amazonaws.com/user-service:latest
+          docker push 451971655895.dkr.ecr.eu-north-1.amazonaws.com/user-service:latest
+
+      - name: Build and push Product Service
+        run: |
+          docker build -t product-service ./product-service
+          docker tag product-service:latest 451971655895.dkr.ecr.eu-north-1.amazonaws.com/product-service:latest
+          docker push 451971655895.dkr.ecr.eu-north-1.amazonaws.com/product-service:latest
+
+      - name: Build and push Order Service
+        run: |
+          docker build -t order-service ./order-service
+          docker tag order-service:latest 451971655895.dkr.ecr.eu-north-1.amazonaws.com/order-service:latest
+          docker push 451971655895.dkr.ecr.eu-north-1.amazonaws.com/order-service:latest
