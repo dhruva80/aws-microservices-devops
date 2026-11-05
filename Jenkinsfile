@@ -37,13 +37,11 @@ pipeline {
         stage('Push Images to ECR') {
             steps {
                 sh '''
-                    docker tag user-service:latest $ECR_REGISTRY/user-service:v1
-                    docker tag product-service:latest $ECR_REGISTRY/product-service:v1
-                    docker tag order-service:latest $ECR_REGISTRY/order-service:v1
-
-                    docker push $ECR_REGISTRY/user-service:v1
-                    docker push $ECR_REGISTRY/product-service:v1
-                    docker push $ECR_REGISTRY/order-service:v1
+                    for service in user-service product-service order-service
+                    do
+                        docker tag $service:latest $ECR_REGISTRY/$service:v1
+                        docker push $ECR_REGISTRY/$service:v1
+                    done
                 '''
             }
         }
@@ -51,22 +49,23 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 sh '''
-                    docker rm -f user-service product-service order-service || true
+                    for service in user-service product-service order-service
+                    do
+                        docker pull $ECR_REGISTRY/$service:v1
+                        docker rm -f $service || true
+                    done
 
-                    docker run -d --restart unless-stopped \
-                    --name user-service \
-                    -p 5001:5001 \
-                    $ECR_REGISTRY/user-service:v1
+                    docker run -d --name user-service \
+                        -p 5001:5001 \
+                        $ECR_REGISTRY/user-service:v1
 
-                    docker run -d --restart unless-stopped \
-                    --name product-service \
-                    -p 5002:5002 \
-                    $ECR_REGISTRY/product-service:v1
+                    docker run -d --name product-service \
+                        -p 5002:5002 \
+                        $ECR_REGISTRY/product-service:v1
 
-                    docker run -d --restart unless-stopped \
-                    --name order-service \
-                    -p 5003:5003 \
-                    $ECR_REGISTRY/order-service:v1
+                    docker run -d --name order-service \
+                        -p 5003:5003 \
+                        $ECR_REGISTRY/order-service:v1
                 '''
             }
         }
@@ -78,6 +77,7 @@ pipeline {
                     curl -f http://localhost:5001
                     curl -f http://localhost:5002
                     curl -f http://localhost:5003
+                    docker ps
                 '''
             }
         }
