@@ -4,7 +4,6 @@ pipeline {
 
     environment {
         AWS_REGION = 'eu-north-1'
-        AWS_ACCOUNT_ID = '451971655895'
         ECR_REGISTRY = '451971655895.dkr.ecr.eu-north-1.amazonaws.com'
     }
 
@@ -48,5 +47,40 @@ pipeline {
                 '''
             }
         }
+
+        stage('Deploy to EC2') {
+            steps {
+                sh '''
+                    docker rm -f user-service product-service order-service || true
+
+                    docker run -d --restart unless-stopped \
+                    --name user-service \
+                    -p 5001:5001 \
+                    $ECR_REGISTRY/user-service:v1
+
+                    docker run -d --restart unless-stopped \
+                    --name product-service \
+                    -p 5002:5002 \
+                    $ECR_REGISTRY/product-service:v1
+
+                    docker run -d --restart unless-stopped \
+                    --name order-service \
+                    -p 5003:5003 \
+                    $ECR_REGISTRY/order-service:v1
+                '''
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                sh '''
+                    sleep 5
+                    curl -f http://localhost:5001
+                    curl -f http://localhost:5002
+                    curl -f http://localhost:5003
+                '''
+            }
+        }
     }
 }
+
